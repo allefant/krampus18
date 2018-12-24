@@ -1,4 +1,6 @@
 import htmltag
+import login
+from flask import session, escape
 
 colors = [
         "crimson",  "orange",       "olive",    "silver",       "hotpink",     "darksalmon",   "pink",     "maroon",
@@ -21,13 +23,17 @@ def init():
     h = htmltag.Html(add)
     h.tag2("!DOCTYPE", html = "")
     h.tag2("meta", charset = "utf8")
+    return h
+
+def get_html():
+    return r
 
 def header():
     with h.tag("head"):
         with h.tag("title"):
             h.content("Krampus Hack 2018")
         with h.tag("script", type = "module", defer = ""):
-            h.content("import * as script from \"./static/__target__/script.js\"; window.script = script;")
+            h.content("import * as lab from \"./static/__target__/lab.js\"; window.lab = lab;")
         with h.tag("style"):
             h.style("body", background = "silver")
             h.style("canvas", **{"vertical-align" : "top"})
@@ -106,7 +112,7 @@ def select(name, *args, **kw):
     with h.tag("div.block"):
         h.content(nopref(name))
         h.tag2("br")
-        with h.tag("select", id = name, onchange = "script.redraw();"):
+        with h.tag("select", id = name, onchange = "lab.redraw();"):
             for arg in args:
                 option(arg, arg == kw.get("default", None))
 
@@ -114,7 +120,7 @@ def slider(name, v1, v2, default):
     with h.tag("div.block"):
         h.content(nopref(name))
         h.tag2("br")
-        h.tag2("input", id = name, type = "range", min = v1, max = v2, value = default, onchange = "script.redraw();")
+        h.tag2("input", id = name, type = "range", min = v1, max = v2, value = default, onchange = "lab.redraw();")
 
 def option(v, selected = False):
     atts = {"value" : v}
@@ -148,11 +154,20 @@ def main():
             with h.tag("a", href = "/lab"):
                 h.content("To Lab")
             with h.tag("h2"):
-                h.content("Play")
-            h.tag2("input", name = "player", value = "Unnamed Player")
-            h.tag2("br")
-            with h.tag("button"): h.content("New Game")
-            with h.tag("button"): h.content("Join Game")
+                h.content("Multiplayer")
+            username = login.get_username(h)
+            if username:
+                with h.tag("h3"):
+                    h.content("Join Game")
+                with h.tag("p"):
+                    h.content("Join someone else's game if you know their name.")
+                h.tag2("input", name = "player", value = "name of friend")
+                with h.tag("button"): h.content("Join Game")
+                with h.tag("h3"):
+                    h.content("Start Game")
+                with h.tag("p"):
+                    h.content("Start a new game and tell other players to join " + username + ".")
+                with h.tag("button"): h.content("Start Game")
             with h.tag("h2"):
                 h.content("Happy Holidays Amarillion!")
             with h.tag("p"):
