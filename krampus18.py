@@ -59,6 +59,7 @@ def style(site):
             h.style("canvas", **{"vertical-align" : "top"})
         h.style("div.block", display = "inline-block")
         h.style("div.left", display = "inline-block")
+        h.style("div.paper", **{"background-color" : "rgba(255, 255, 255, 0.5)"})
         h.style("p", width = "40em")
         h.style("input", margin = "0px")
 
@@ -126,6 +127,33 @@ def editor():
         h.tag2("span", id = "g5")
     slider("ear_height", 15)
     slider("ear_size", 7)
+    with h.tag("div.paper"):
+        with h.tag("h3"):
+            h.content("Notes")
+        with h.tag("p"):
+            h.content("Big eyes allow more precise attacks!")
+        with h.tag("p"):
+            h.content("Big ears are good for a quick defense!")
+        with h.tag("p"):
+            h.content("A longer nose can shoot lasers over a distance!")
+        with h.tag("p"):
+            h.content("Long legs for fast running!")
+        with h.tag("p"):
+            h.content("Fire is strong against ice and water.")
+        with h.tag("p"):
+            h.content("Electric is strong against fire, ice and water.")
+        with h.tag("p"):
+            h.content("Nature is very resilient.")
+        with h.tag("p"):
+            h.content("Ice is strong against water.")
+        with h.tag("p"):
+            h.content("Water is strong against fire.")
+        with h.tag("p"):
+            h.content("Magic is strong against magic.")
+        with h.tag("p"):
+            h.content("Healers cannot attack but will heal other pets.")
+        with h.tag("p"):
+            h.content("Evil pets are evil - do not create them or you will regret it.")
 
 def nopref(name):
     if "_" in name:

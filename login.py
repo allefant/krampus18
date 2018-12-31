@@ -13,7 +13,7 @@ def do_login():
         session["result"] = result
         return redirect(url_for("main"))
 
-    h = krampus18.init()
+    h = krampus18.init("login")
     with h.tag("html"):
         krampus18.header("login")
         with h.tag("body"):

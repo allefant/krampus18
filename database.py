@@ -63,10 +63,13 @@ def save_pet(name, dna):
     else:
         c.sql("UPDATE pet SET dna = %s, arena = NULL, target_pet = NULL WHERE id = %s", (dna, r[0][0]))
 
-def create_boss(aid, dna, x, y, z, a):
-    c.sql("INSERT INTO pet (arena, dna, x, y, z, a) VALUES (%s, %s, %s, %s, %s, %s)", (aid, dna, x, y, z, a))
+def create_boss(aid, dna, x, y, z, a, hp):
+    c.sql("INSERT INTO pet (arena, dna, x, y, z, a, hp) VALUES (%s, %s, %s, %s, %s, %s, %s)", (aid, dna, x, y, z, a, hp))
     r = c.sql("SELECT LAST_INSERT_ID()")
     return r[0][0]
+
+def update_boss(pid, dna):
+    c.sql("UPDATE pet SET dna = %s WHERE id = %s", (dna, pid))
 
 def get_pet_dna(name):
     r = c.sql("SELECT dna FROM pet WHERE owner = (SELECT id FROM player WHERE name=%s)", (name, ))

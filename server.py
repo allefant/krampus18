@@ -16,6 +16,9 @@ ideas:
 
 0     1         2       3    4      5      6       7
 fire, electric, nature, ice, water, magic, healer, evil
+
+TODO:
+- primary evil pets will attack their friends instead of the boss
 """
 
 elements_table = [
@@ -101,6 +104,7 @@ class Arena:
             self.create_boss()
 
         if restart:
+            database.update_boss(self.boss, self.make_boss_dna())
             update = []
             i = 0
             n = len(self.pets) - 1
@@ -133,6 +137,18 @@ class Arena:
             q = dx * dx + dy * dy
             if minq is None or q < minq:
                 minq = q
+                minp = pet
+        return minp
+
+    def find_wounded(self):
+        minh = None
+        minp = None
+        for pet in self.pets.values():
+            if pet.owner == 0: continue
+            if pet.hp <= 0: continue
+            if pet.x is None: continue
+            if minh is None or pet.hp < minh:
+                minh = pet.hp
                 minp = pet
         return minp
 
@@ -172,18 +188,27 @@ class Arena:
                         a = (ta * 180) / math.pi - 90
             else:
                 target = 0
-                if self.boss != 0 and hp > 0:
-                    tpet = self.pets[self.boss]
+                towards = 0
+                if pet.primary == 6 or pet.primary == 7: # healer or evil
+                    wounded = self.find_wounded()
+                    if wounded:
+                        towards = wounded.pid
+                else:
+                    towards = self.boss
+                    
+                if towards != 0 and hp > 0:
+                    tpet = self.pets[towards]
                     dx = tpet.x - x
                     dy = tpet.y - y
                     ta = math.atan2(dy, dx)
-                    a = (ta * 180) / math.pi - 90
                     d = math.sqrt(dx * dx + dy * dy)
+                    if d > 1:
+                        a = (ta * 180) / math.pi - 90
                     if d > pet.attack_distance:
                         x += math.cos(ta) * pet.speed
                         y += math.sin(ta) * pet.speed
                     else:
-                        target = self.boss
+                        target = towards
 
                 if self.collider and hp > 0:
                     # will collide with itself but we do not care, it
@@ -213,7 +238,7 @@ class Arena:
                 if not self.boss_defeat_t:
                     self.boss_defeat_t = time.time()
                     print("boss is dead for", self.name, "advancing to round", self.round + 1)
-                elif time.time() - self.boss_defeat_t > 10:
+                elif time.time() - self.boss_defeat_t > 5:
                     database.restart_arena(self.name, 1, self.round + 1)
             else:
                 target = self.find_closest_pet(boss)
@@ -232,10 +257,24 @@ class Arena:
         if redo:
             self.start(False)
 
+    def make_boss_dna(self):
+        eye_count = min(3, (self.round + 9) // 10)
+        eye_size = (self.round - 1) % 10
+        ear_size = self.round // 3
+        dna = {
+            "behavior_primary":random.randint(0, 5), "behavior_secondary":random.randint(0, 7),
+            "eye_count":eye_count,"eye_height":8,"eye_space":3,"eye_size":eye_size,
+            "limb_count":1,"limb_size":4,"limb_n":6,
+            "nose_height":6,"nose_size":6,"nose_n":6,
+            "nose_color":3,"nose_nostrils":2,
+            "ear_height":10,"ear_size":ear_size,
+            "body_size":self.round // 2}
+        return json.dumps(dna)
+
     def create_boss(self):
         x, y, z, a = 90, 50, 0, 90
-        dna = '{"behavior_primary":5,"behavior_secondary":5,"eye_count":1,"eye_height":8,"eye_space":3,"eye_size":5,"limb_count":1,"limb_size":4,"limb_n":6,"nose_height":6,"nose_size":6,"nose_n":6,"nose_color":3,"nose_nostrils":2,"ear_height":10,"ear_size":6}'
-        args = database.create_boss(self.aid, dna, x, y, z, a), 0, x, y, z, a, 0
+        args = database.create_boss(self.aid,
+            self.make_boss_dna(), x, y, z, a, 1000), 0, x, y, z, a, 0, 1000
         pet = Pet(*args)
         self.pets[pet.pid] = pet
         pet.dna = dna
@@ -258,10 +297,11 @@ class Pet:
             pet.a = 270
             pet.hp = 100
         else:
-            if x < 0: x = 0
-            if x > 100: x = 100
-            if y < 0: y = 0
-            if y > 100: y = 100
+            if x is not None:
+                if x < 0: x = 0
+                if x > 100: x = 100
+                if y < 0: y = 0
+                if y > 100: y = 100
             pet.x = x
             pet.y = y
             pet.z = z
@@ -273,11 +313,13 @@ class Pet:
         pet.dna = json.loads(d)
         pet.attack_distance = (1 + pet.dna["nose_size"]) * (1 + pet.dna["nose_n"]) / 32 * 80
         pet.speed = (1 + pet.dna["limb_count"]) * (1 + pet.dna["limb_size"]) * (1 + pet.dna["limb_n"]) / 128 * 16
-        visual_strength = [0, 1, 1.5, 1.75][pet.dna["eye_count"]]
-        pet.attack_power = visual_strength * (1 + pet.dna["eye_size"])
-        pet.defense_power = pet.dna["ear_size"]
+        visual_strength = [0, 1, 1.5, 1.75][pet.dna.get("eye_count", 0)]
+        body_strength = 1 + pet.dna.get("body_size", 0) / 5
+        pet.attack_power = body_strength * visual_strength * (1 + pet.dna["eye_size"])
+        pet.defense_power = pet.dna.get("ear_size", 0)
         pet.primary = pet.dna["behavior_primary"]
         pet.secondary = pet.dna["behavior_secondary"]
+        pet.extra_damage = pet.dna.get("body_size", 0)
 
     def attack(pet, other):
         if other.hp <= 0:
@@ -285,11 +327,18 @@ class Pet:
             return
         attack_points = pet.attack_power
         if attack_points == 0: return
+        if pet.primary == 6: # healer
+            other.hp += attack_points
+            if other.hp > 100: other.hp = 100
+            return
         defense_points = other.defense_power
         p = attack_points / (attack_points + defense_points)
+        #print("hit chance (%d) %.2f" % (pet.owner, p))
         r = random.random()
         if p > r:
-            other.hp -= element_damge(pet.primary, other.primary, pet.secondary, other.secondary)
+            damage = element_damge(pet.primary, other.primary, pet.secondary, other.secondary)
+            damage += pet.extra_damage
+            other.hp -= damage
             if other.hp < 0: other.hp = 0
 
 if __name__ == "__main__":

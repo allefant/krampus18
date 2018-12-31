@@ -74,7 +74,7 @@ class Pet:
         return j
 
     def from_json(self, j):
-        kv = re.findall("\"(.+?)\":(\\d+)", j)
+        kv = re.findall("\"(.+?)\" *: *(\\d+)", j)
         for k, v in kv:
             self.data[k] = int(v) # all values must be int
 
@@ -98,6 +98,8 @@ class Pet:
 
     def get_ear_height(self): return (self.data["ear_height"] - 4) * math.pi / -32
     def get_ear_size(self): return self.data["ear_size"] / 8
+
+    def get_body_size(self): return 1 + self.data.get("body_size", 0) / 10
 
     def attach(pet, parent, lat, lon, radius, color, kw = {}):
         b = Ball(pet)
@@ -128,6 +130,7 @@ class Pet:
 
         body = Ball(pet)
         body.c = color
+        body.r = pet.get_body_size()
         head = pet.attach(body, -math.pi / 2, 0, 1, color) 
 
         lat = pet.get_eye_height()

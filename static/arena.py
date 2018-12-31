@@ -10,6 +10,7 @@ class State:
         self.server = 0 # 0 = unknown, 1 = ok, -1 = down
         self.round = 0
         self.check_round_t = None
+        self.redo = False
 FPS = 20
 state = State()
 
@@ -170,6 +171,8 @@ def api_call(url, data, on_receive):
 
 def read_round():
     def on_receive(j):
+        if state.round > 0 and state.round != j[0]:
+            state.redo = True
         state.round = j[0]
     api_call("/arena/round", "name=" + state.name, on_receive)
 
@@ -187,7 +190,7 @@ def read_position(whose):
             existing.add(pid)
 
             if owner is None and hp <= 0 and not state.check_round_t:
-                state.check_round_t = now() + 1000 * 11
+                state.check_round_t = now() + 1000 * 7
 
             if pid not in pets_by_id:
                 redo = True
@@ -199,8 +202,9 @@ def read_position(whose):
                 pets_by_id.pop(pets[i].pid)
                 pets.pop(i)
 
-        if redo: # if a new one joins we need its DNA...
+        if redo or state.redo: # if a new one joins we need its DNA...
             begin_animation(state.who, state.name)
+            state.redo = False
 
     api_call("/arena/pos", "name=" + state.name, on_receive)
 
@@ -233,23 +237,21 @@ def begin_animation(who, whose, server_t):
     state.check_t = __new__(Date()).getTime() + 1000 * 5
     state.server = 0
 
-    r = __new__(XMLHttpRequest())
-    def onreadystatechange():
-        if r.readyState == 4 and r.status == 200:
-            window.requestAnimationFrame(step)
-            j = JSON.parse(r.responseText)
-            for pid, owner, name, dna in j:
-                if pid not in pets_by_id:
-                    pet = Pet()
-                    pet.pid = pid
-                    pet.owner = owner if owner else 0
-                    pet.name = name if name else "boss"
-                    pet.from_json(dna)
-                    pet.make_balls()
-                    pets.append(pet)
-                    pets_by_id[pet.pid] = pet
-    r.onreadystatechange = onreadystatechange
-    r.open("POST", "/arena/dna")
-    r.setRequestHeader('Content-type', 'application/x-www-form-urlencoded')
-    r.send("name=" + whose)
+    def on_receive(j):
+        window.requestAnimationFrame(step)
+        for pid, owner, name, dna in j:
+            if pid not in pets_by_id:
+                pet = Pet()
+                pet.pid = pid
+                pet.owner = owner if owner else 0
+                pet.name = name if name else "boss"
+                pets_by_id[pet.pid] = pet
+                pets.append(pet)
+            else:
+                pet = pets_by_id[pid]
+                
+            pet.from_json(dna)
+            pet.make_balls()
+                
+    api_call("/arena/dna", "name=" + whose, on_receive)
 
