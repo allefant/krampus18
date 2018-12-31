@@ -4,7 +4,7 @@ from flask import session, escape, request
 import database
 import json
 
-def init():
+def init(site):
     global h
     global r
     r = ""
@@ -19,32 +19,51 @@ def init():
 def get_html():
     return r
 
-def header():
+def header(site):
     with h.tag("head"):
-        title()
-        style()
+        title(site)
+        style(site)
 
-def title():
+def title(site):
     with h.tag("title"):
         h.content("Krampus Hack 2018")
 
 def client(run):
     with h.tag("script", type = "module", defer = ""):
-        h.content("import * as client from \"./static/__target__/client.js\"; window.client = client;" + run)
+        h.content("import * as client from \"/static/__target__/client.js\"; window.client = client;" + run)
 
-def style():
+def style(site):
     with h.tag("style"):
-        h.style("body", background = "silver")
-        h.style("canvas", **{"vertical-align" : "top"})
+        if site == "lab":
+            h.style("body", **{
+            "background-color" : "#9e4922",
+            "background-image" : "url(\"/static/lab.jpg\")",
+            "background-size" : "100%",
+            "background-repeat" : "no-repeat"})
+        elif site == "arena":
+            h.style("body", **{
+            "background-color" : "black",
+            "background-image" : "url(\"/static/pit.jpg\")",
+            "background-size" : "100%",
+            "background-repeat" : "no-repeat"})
+        else:
+            h.style("body", **{
+                "background-color" : "white",
+                "background-image" : "url(\"/static/fir.jpg\")",
+                "background-size" : "33%"})
+        if site == "arena":
+            h.style("canvas", position = "fixed", top = "50%", left = "50%",
+                transform = "translate(-50%, -40%)")
+            h.style("h1", **{"text-align" : "center", "width" : "100%"})
+        else:
+            h.style("canvas", **{"vertical-align" : "top"})
         h.style("div.block", display = "inline-block")
         h.style("div.left", display = "inline-block")
-        h.style("a", **{"-webkit-appearance" : "button", "text-decoration": "none",
-            "color": "initial"})
         h.style("p", width = "40em")
         h.style("input", margin = "0px")
 
 def lab():
-    init()
+    init("lab")
 
     dna = "{}"
     if "username" in session:
@@ -56,12 +75,12 @@ def lab():
     
     with h.tag("html"):
         with h.tag("head"):
-            title()
+            title("lab")
             client("client.start_lab('" + dna + "');")
-            style()
+            style("lab")
         with h.tag("body"):
             with h.tag("h1"):
-                h.content("Lab")
+                h.content("Lab of " + username)
             with h.tag("div.left"):
                 editor()
             with h.tag("canvas", width = "512px", height = "512px"):
@@ -135,46 +154,77 @@ def option(v):
     with h.tag("option", **atts):
         h.content(v)
 
-def arena():
-    init()
-
+def arena(whose = None):
+    init("arena")
+    username = None
     if "username" in session:
         username = session["username"]
         if username:
             database.access_db()
-            database.enter_arena(username, username)
+            if whose is None:
+                whose = username
+            database.enter_arena(username, whose)
+
+    if username is None: username = "null"
+    if whose is None: whose = "null"
+
+    t = database.server_get_t(1).timestamp()
     
     with h.tag("html"):
         with h.tag("head"):
-            title()
-            client("client.start_arena(\"" + username + "\", \"" + username + "\");")
-            style()
+            title("arena")
+            client("client.start_arena(\"" + username + "\", \"" + whose + "\", " + str(t) + ");")
+            style("arena")
         with h.tag("body"):
             with h.tag("h1"):
-                h.content("Arena")
-            with h.tag("a", href = "/"):
-                h.content("Back")
+                h.content("Arena of " + whose)
+            with h.tag("form", action = "/"):
+                h.tag2("input", type = "hidden", name = "whose", value = whose)
+                h.tag2("input", type = "submit", value = "Back")
             with h.tag("canvas", width = "512px", height = "512px"):
                 h.content("here be dragons")
     return r
 
-def arena_post():
+def arena_dna():
     name = request.form["name"]
     database.access_db()
     pets = database.get_dna_in_arena(name)
     return json.dumps(pets)
 
+def arena_pos():
+    name = request.form["name"]
+    database.access_db()
+    pets = database.get_pos_in_arena(name = name)
+    return json.dumps(pets)
+
+def arena_t():
+    name = request.form["name"]
+    database.access_db()
+    t = database.server_get_t(1).timestamp()
+    jt = [t]
+    return json.dumps(jt)
+
+def arena_round():
+    name = request.form["name"]
+    database.access_db()
+    r = database.get_arena_round(name)
+    j = [r]
+    return json.dumps(j)
+
 def main():
-    init()
+    init("main")
     with h.tag("html"):
-        header()
+        header("main")
         with h.tag("body"):
             with h.tag("h1"):
                 h.content("Krampus Hack 2018")
-            with h.tag("a", href = "/arena"):
-                h.content("To Arena")
-            with h.tag("a", href = "/lab"):
-                h.content("To Lab")
+            whose = request.args.get("whose", None)
+            with h.tag("form", action = "/arena"):
+                if whose:
+                    h.tag2("input", type = "hidden", name = "player", value = whose)
+                h.tag2("input", type = "submit", value = "To Arena")
+            with h.tag("form", action = "/lab"):
+                h.tag2("input", type = "submit", value = "To Lab")
             with h.tag("h2"):
                 h.content("Multiplayer")
             username = login.get_username(h)
@@ -183,13 +233,15 @@ def main():
                     h.content("Join Game")
                 with h.tag("p"):
                     h.content("Join someone else's game if you know their name.")
-                h.tag2("input", name = "player", value = "name of friend")
-                with h.tag("button"): h.content("Join Game")
+                with h.tag("form", action = "/arena"):
+                    h.tag2("input", name = "player", value = "name of friend")
+                    h.tag2("input", type = "submit", value = "Join Game")
                 with h.tag("h3"):
                     h.content("Start Game")
                 with h.tag("p"):
                     h.content("Start a new game and tell other players to join " + username + ".")
-                with h.tag("button"): h.content("Start Game")
+                with h.tag("form", action = "/arena/start"):
+                    h.tag2("input", type = "submit", value = "Start Game")
             with h.tag("h2"):
                 h.content("Happy Holidays Amarillion!")
             with h.tag("p"):

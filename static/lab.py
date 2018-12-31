@@ -30,9 +30,9 @@ def redraw():
     cy = h / 4
  
     s = 0.2
-    pet.draw_y(c, w / 4, h / 4, 0.5 * w * s)
-    pet.draw_z(c, w * 3 / 4, h / 4, 0.5 * w * s)
-    pet.draw_x(c, w / 4, h * 3 / 4, 0.5 * w * s)
+    pet.draw_y(c, w / 4, h / 4, 0.5 * w * s, 0)
+    pet.draw_z(c, w * 3 / 4, h / 4, 0.5 * w * s, 0)
+    pet.draw_x(c, w / 4, h * 3 / 4, 0.5 * w * s, 0)
 
     encode(pet)
 

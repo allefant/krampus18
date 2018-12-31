@@ -8,5 +8,5 @@ def start_lab(dna):
 def draw_lab():
     lab.redraw()
 
-def start_arena(who, whose):
-    arena.begin_animation(who, whose)
+def start_arena(who, whose, server_t):
+    arena.begin_animation(who, whose, server_t)

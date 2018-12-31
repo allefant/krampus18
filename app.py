@@ -17,11 +17,27 @@ def lab():
 
 @app.route("/arena")
 def arena():
-    return krampus18.arena()
+    return krampus18.arena(request.args.get("player", None))
 
-@app.route("/arena", methods = ["POST"])
-def arena_post():
-    return krampus18.arena_post()
+@app.route("/arena/start")
+def arena_start():
+    if "username" in session:
+        username = session["username"]
+        database.restart_arena(username, 1, 1)
+    return redirect(url_for("arena"))
+
+@app.route("/arena/dna", methods = ["POST"])
+def arena_dna():
+    return krampus18.arena_dna()
+
+@app.route("/arena/pos", methods = ["POST"])
+def arena_pos(): return krampus18.arena_pos()
+
+@app.route("/arena/t", methods = ["POST"])
+def arena_t(): return krampus18.arena_t()
+
+@app.route("/arena/round", methods = ["POST"])
+def arena_round(): return krampus18.arena_round()
 
 @app.route('/login', methods = ["POST"])
 def login():

@@ -15,7 +15,7 @@ def do_login():
 
     h = krampus18.init()
     with h.tag("html"):
-        krampus18.header()
+        krampus18.header("login")
         with h.tag("body"):
             with h.tag("h1"):
                 h.content("Could not login " + username + ".")
@@ -44,8 +44,8 @@ def get_username(h):
                 h.tag2("br")
                 session.pop("result", None)
             h.content("Found session cookie for " + username + ".")
-            with h.tag("a", href = "/logout"):
-                h.content("Logout.")
+            with h.tag("form", action = "/logout"):
+                h.tag2("input", type = "submit", value = "Logout")
     else:
         h.content("No session cookie found.")
         with h.tag("form", method = "post", action = "/login"):

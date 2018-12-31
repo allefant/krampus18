@@ -50,8 +50,14 @@ class Pet:
         )
     def __init__(self):
         self.name = "?"
+        self.owner = 0
+        self.pid = 0
         self.balls = []
         self.data = {}
+        self.x = 0
+        self.y = 0
+        self.z = 0
+        self.a = 0
         for name, bits, default in self.bits:
             self.data[name] = default
 
@@ -179,29 +185,39 @@ class Pet:
             pet.attach(head, eh, -pi / 2 * 1.2, es, color, {"ys": 0.75})
 
         
-    def draw_y(pet, c, ox, oy, s):
+    def draw_y(pet, c, ox, oy, s, a):
+        c.translate(ox, oy)
+        c.rotate(a * math.pi / 180)
         for b in sorted(pet.balls, key = lambda x: -x.y):
             n = max(abs(b.nx), abs(b.ny), abs(b.nz))
             r = b.r / n
             for i in range(n):
                 x, y, z = b.get_pos(i, n)
-                pet.circle(c, b.c, ox + x * s, oy + z * s, r * s, r * s)
+                pet.circle(c, b.c, x * s, z * s, r * s, r * s)
+        c.setTransform(1, 0, 0, 1, 0, 0)
 
-    def draw_z(pet, c, ox, oy, s):
-        for b in sorted(pet.balls, key = lambda x: -x.z):
+    def draw_z(pet, c, ox, oy, s, a):
+        c.translate(ox, oy)
+        c.rotate(a * math.pi / 180)
+        c.scale(s, s)
+        for b in sorted(pet.balls, key = lambda x: -x.z * 1000 + x.x + x.y):
             n = max(abs(b.nx), abs(b.ny), abs(b.nz))
             r = b.r / n
             for i in range(n):
                 x, y, z = b.get_pos(i, n)
-                pet.circle(c, b.c, ox + x * s, oy - y * s, r * s, r * b.ys * s)
+                pet.circle(c, b.c, x, - y, r, r * b.ys)
+        c.setTransform(1, 0, 0, 1, 0, 0)
 
-    def draw_x(pet, c, ox, oy, s):
+    def draw_x(pet, c, ox, oy, s, a):
+        c.translate(ox, oy)
+        c.rotate(a * math.pi / 180)
         for b in sorted(pet.balls, key = lambda x: x.x):
             n = max(abs(b.nx), abs(b.ny), abs(b.nz))
             r = b.r / n
             for i in range(n):
                 x, y, z = b.get_pos(i, n)
-                pet.circle(c, b.c, ox - y * s, oy + z * s, r * b.ys * s, r * s)
+                pet.circle(c, b.c, - y * s, z * s, r * b.ys * s, r * s)
+        c.setTransform(1, 0, 0, 1, 0, 0)
 
     def circle(pet, c, color, x, y, rx, ry):
         c.fillStyle = color
